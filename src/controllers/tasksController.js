@@ -14,6 +14,10 @@ class TasksController {
     this.tasksService = tasksService;
   }
 
+  getTaskIdParam(req) {
+    return req.params?.id ?? req.params?.taskId;
+  }
+
   listByProject = async (req, res, next) => {
     try {
       const fields = {};
@@ -54,7 +58,10 @@ class TasksController {
       const status = oneOf(req.body?.status, ["todo", "in_progress", "done"]) || "todo";
       const priority = oneOf(req.body?.priority, ["low", "medium", "high"]) || "medium";
 
-      const assigneeId = req.body?.assignee_id === undefined ? undefined : req.body?.assignee_id === null ? null : uuidLike(req.body?.assignee_id);
+      const assigneeRaw =
+        req.body?.assignee_id !== undefined ? req.body?.assignee_id : req.body?.assignee;
+      const assigneeId =
+        assigneeRaw === undefined ? undefined : assigneeRaw === null ? null : uuidLike(assigneeRaw);
       const dueDateStr = req.body?.due_date === undefined ? undefined : req.body?.due_date === null ? null : dateOnly(req.body?.due_date);
       const dueDate = dueDateStr ? new Date(`${dueDateStr}T00:00:00.000Z`) : dueDateStr === null ? null : undefined;
 
@@ -70,7 +77,7 @@ class TasksController {
         dueDate,
       });
 
-      response.success(res, { status: 201, data: { task } });
+      response.success(res, { status: 201, data: task });
     } catch (err) {
       next(err);
     }
@@ -79,7 +86,7 @@ class TasksController {
   update = async (req, res, next) => {
     try {
       const fields = {};
-      const taskId = requiredField(fields, "id", req.params?.id, uuidLike);
+      const taskId = requiredField(fields, "id", this.getTaskIdParam(req), uuidLike);
       failIf(fields);
 
       const patch = {};
@@ -94,8 +101,9 @@ class TasksController {
       if (req.body?.status !== undefined) patch.status = oneOf(req.body?.status, ["todo", "in_progress", "done"]);
       if (req.body?.priority !== undefined) patch.priority = oneOf(req.body?.priority, ["low", "medium", "high"]);
 
-      if (req.body?.assignee_id !== undefined) {
-        patch.assignee_id = req.body?.assignee_id === null ? null : uuidLike(req.body?.assignee_id);
+      if (req.body?.assignee_id !== undefined || req.body?.assignee !== undefined) {
+        const raw = req.body?.assignee_id !== undefined ? req.body?.assignee_id : req.body?.assignee;
+        patch.assignee_id = raw === null ? null : uuidLike(raw);
       }
 
       if (req.body?.due_date !== undefined) {
@@ -112,7 +120,7 @@ class TasksController {
         userId: req.auth.userId,
         patch,
       });
-      response.success(res, { status: 200, data: { task } });
+      response.success(res, { status: 200, data: task });
     } catch (err) {
       next(err);
     }
@@ -121,10 +129,10 @@ class TasksController {
   delete = async (req, res, next) => {
     try {
       const fields = {};
-      const taskId = requiredField(fields, "id", req.params?.id, uuidLike);
+      const taskId = requiredField(fields, "id", this.getTaskIdParam(req), uuidLike);
       failIf(fields);
       await this.tasksService.delete({ taskId, userId: req.auth.userId });
-      response.success(res, { status: 200, data: { ok: true } });
+      response.noContent(res);
     } catch (err) {
       next(err);
     }

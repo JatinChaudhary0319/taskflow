@@ -19,7 +19,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-API available at `http://localhost:5000`
+API available at `http://localhost:3000`
 
 Note: this submission includes **backend only** (Node.js + PostgreSQL). Frontend is intentionally not implemented.
 

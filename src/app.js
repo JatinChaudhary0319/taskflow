@@ -13,7 +13,7 @@ const notFound = require("./http/middleware/notFound");
 
 const buildRoutes = require("./routes");
 
-const PORT = env.optional("PORT", "5000");
+const PORT = env.optional("PORT", "3000");
 
 const app = express();
 app.disable("x-powered-by");
@@ -26,7 +26,7 @@ app.get("/health", async (_req, res) => {
     await pool.query("select 1 as ok");
     res.type("application/json").status(200).send({ ok: true });
   } catch (_e) {
-    res.type("application/json").status(500).send({ ok: false });
+    res.type("application/json").status(500).send({ error: "internal server error" });
   }
 });
 

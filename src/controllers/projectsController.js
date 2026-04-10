@@ -23,7 +23,7 @@ class ProjectsController {
       const d = optionalTextOrNull(req.body?.description);
       const description = d.kind === "skip" ? undefined : d.value === "" ? null : d.value;
       const project = await this.projectsService.create({ ownerId: req.auth.userId, name, description });
-      response.success(res, { status: 201, data: { project } });
+      response.success(res, { status: 201, data: project });
     } catch (err) {
       next(err);
     }
@@ -55,7 +55,7 @@ class ProjectsController {
         name,
         description,
       });
-      response.success(res, { status: 200, data: { project } });
+      response.success(res, { status: 200, data: project });
     } catch (err) {
       next(err);
     }
@@ -67,7 +67,7 @@ class ProjectsController {
       const projectId = requiredField(fields, "id", req.params?.id, uuidLike);
       failIf(fields);
       await this.projectsService.delete({ projectId, userId: req.auth.userId });
-      response.success(res, { status: 200, data: { ok: true } });
+      response.noContent(res);
     } catch (err) {
       next(err);
     }

@@ -27,7 +27,9 @@ const authController = () => {
 
 const router = express.Router();
 
-router.post("/register", authController.register);
-router.post("/login", authController.login);
+const controller = authController();
+
+router.post("/register", controller.register);
+router.post("/login", controller.login);
 
 module.exports = router;

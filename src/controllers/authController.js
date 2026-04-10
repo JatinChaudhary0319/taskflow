@@ -14,7 +14,7 @@ class AuthController {
       const password = requiredField(fields, "password", req.body?.password, asString);
       failIf(fields);
       const out = await this.authService.register({ name, email, password });
-      response.success(res, { status: 200, data: out });
+      response.success(res, { status: 201, data: out });
     } catch (err) {
       next(err);
     }

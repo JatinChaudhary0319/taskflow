@@ -30,16 +30,19 @@ const tasksController = () => {
   return new TasksController({ tasksService });
 };
 
+const controller = projectsController();
+const controllerTask = tasksController();
+
 const router = express.Router();
 
-router.get("/", projectsController.list);
-router.post("/", projectsController.create);
-router.patch("/:id", projectsController.update);
-router.delete("/:id", projectsController.delete);
-router.get("/:id", projectsController.getDetails);
+router.get("/", controller.list);
+router.post("/", controller.create);
+router.patch("/:id", controller.update);
+router.delete("/:id", controller.delete);
+router.get("/:id", controller.getDetails);
 
-router.get("/:id/tasks", tasksController.listByProject);
-router.post("/:id/tasks", tasksController.createForProject);
-router.get("/:id/stats", tasksController.stats);
+router.get("/:id/tasks", controllerTask.listByProject);
+router.post("/:id/tasks", controllerTask.createForProject);
+router.get("/:id/stats", controllerTask.stats);
 
 module.exports = router;

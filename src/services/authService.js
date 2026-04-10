@@ -1,9 +1,6 @@
 const bcrypt = require("bcryptjs");
 
-const env = require("../config/env");
 const { ValidationError, UnauthenticatedError } = require("../http/errors");
-
-const JWT_EXPIRY = env.required("JWT_EXPIRY");
 
 class AuthService {
   constructor({ usersRepository, tokens, bcryptCost }) {
@@ -22,7 +19,10 @@ class AuthService {
     const passwordHash = await bcrypt.hash(password, this.bcryptCost);
     const user = await this.usersRepository.create({ name, email, passwordHash });
     const token = this.tokens.issue({ userId: user.id, email: user.email });
-    return { user, access_token: token, token_type: "Bearer", expires_in: JWT_EXPIRY };
+    return {
+      token,
+      user: { id: user.id, name: user.name, email: user.email },
+    };
   }
 
   async login({ email, password }) {
@@ -36,8 +36,10 @@ class AuthService {
     const ok = await bcrypt.compare(password, row.password);
     if (!ok) throw new UnauthenticatedError();
     const token = this.tokens.issue({ userId: row.id, email: row.email });
-    const user = { id: row.id, name: row.name, email: row.email, created_at: row.created_at };
-    return { user, access_token: token, token_type: "Bearer", expires_in: JWT_EXPIRY };
+    return {
+      token,
+      user: { id: row.id, name: row.name, email: row.email },
+    };
   }
 }
 

@@ -5,7 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "token", "value": "" },
     { "key": "projectId", "value": "" },
     { "key": "taskId", "value": "" },
@@ -49,8 +49,8 @@
                 "exec": [
                   "pm.test('stores token', function () {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json).to.have.property('access_token');",
-                  "  pm.collectionVariables.set('token', json.access_token);",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.collectionVariables.set('token', json.token);",
                   "});"
                 ]
               }
@@ -89,8 +89,8 @@
                 "exec": [
                   "pm.test('stores projectId', function () {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json).to.have.property('project');",
-                  "  pm.collectionVariables.set('projectId', json.project.id);",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.collectionVariables.set('projectId', json.id);",
                   "});"
                 ]
               }
@@ -168,8 +168,8 @@
                 "exec": [
                   "pm.test('stores taskId', function () {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json).to.have.property('task');",
-                  "  pm.collectionVariables.set('taskId', json.task.id);",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.collectionVariables.set('taskId', json.id);",
                   "});"
                 ]
               }

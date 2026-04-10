@@ -28,7 +28,7 @@ class ProjectsService {
       page: null,
       limit: null,
     });
-    return { project, tasks };
+    return { ...project, tasks };
   }
 
   async update({ projectId, userId, name, description }) {

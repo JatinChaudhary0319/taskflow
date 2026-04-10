@@ -12,27 +12,34 @@ class Response {
     res.send(data);
   }
 
+  /** 204 No Content — no response body. */
+  noContent(res) {
+    res.status(204).send();
+  }
+
   fail(res, { err, logger }) {
+    res.type("application/json");
     if (err instanceof ValidationError) {
-      return this.success(res, {
-        status: 400,
-        data: { error: "validation failed", fields: err.fields },
-      });
+      res.status(400);
+      return res.send({ error: "validation failed", fields: err.fields });
     }
     if (err instanceof UnauthenticatedError) {
-      return this.success(res, { status: 401, data: { error: "unauthenticated" } });
+      res.status(401);
+      return res.send({ error: "unauthorized" });
     }
     if (err instanceof ForbiddenError) {
-      return this.success(res, { status: 403, data: { error: "forbidden" } });
+      res.status(403);
+      return res.send({ error: "forbidden" });
     }
     if (err instanceof NotFoundError) {
-      return this.success(res, { status: 404, data: { error: "not found" } });
+      res.status(404);
+      return res.send({ error: "not found" });
     }
 
     if (logger) logger.error({ err }, "request failed");
-    return this.success(res, { status: 500, data: { error: "internal server error" } });
+    res.status(500);
+    return res.send({ error: "internal server error" });
   }
 }
 
 module.exports = new Response();
-

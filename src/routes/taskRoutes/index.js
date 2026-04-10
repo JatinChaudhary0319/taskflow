@@ -18,9 +18,11 @@ const tasksController = () => {
   return new TasksController({ tasksService });
 };
 
+const controller = tasksController();
+
 const router = express.Router();
 
-router.patch("/:id", tasksController.update);
-router.delete("/:id", tasksController.delete);
+router.patch("/:id", controller.update);
+router.delete("/:id", controller.delete);
 
 module.exports = router;
