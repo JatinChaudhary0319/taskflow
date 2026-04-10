@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+
+backend/bin/
+backend/tmp/
+
+dist/
+build/
+
+.DS_Store
