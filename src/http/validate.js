@@ -13,12 +13,11 @@ function oneOf(v, allowed) {
   return allowed.includes(s) ? s : null;
 }
 
+/** Hyphenated 32-hex id (matches PostgreSQL `uuid` text form). Does not enforce RFC version/variant bits. */
 function uuidLike(v) {
   const s = asString(v);
   if (!s) return null;
-  const ok = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    s,
-  );
+  const ok = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
   return ok ? s : null;
 }
 
