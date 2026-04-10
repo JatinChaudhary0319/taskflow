@@ -12,7 +12,7 @@ class TasksService {
     return this.tasksRepository.listByProjectAccessible({ projectId, userId, status, assigneeId, page, limit });
   }
 
-  async create({ projectId, creatorId, userId, title, description, status, priority, assigneeId, dueDate }) {
+  async create({ projectId, userId, title, description, status, priority, assigneeId, dueDate }) {
     const project = await this.projectsRepository.getAccessible(projectId, userId);
     if (!project) throw new NotFoundError();
 
@@ -22,7 +22,6 @@ class TasksService {
 
     return this.tasksRepository.create({
       projectId,
-      creatorId,
       title,
       description: description ?? null,
       status: status || "todo",
@@ -48,9 +47,9 @@ class TasksService {
   }
 
   async delete({ taskId, userId }) {
-    const meta = await this.tasksRepository.getProjectOwnerAndTaskCreator(taskId);
+    const meta = await this.tasksRepository.getProjectOwnerAndTaskAssignee(taskId);
     if (!meta) throw new NotFoundError();
-    const isAllowed = meta.owner_id === userId || meta.creator_id === userId;
+    const isAllowed = meta.owner_id === userId || meta.assignee_id === userId;
     if (!isAllowed) throw new ForbiddenError();
     const ok = await this.tasksRepository.delete(taskId);
     if (!ok) throw new NotFoundError();

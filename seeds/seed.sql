@@ -16,7 +16,7 @@ VALUES (
   '00000000-0000-0000-0000-000000000001'
 );
 
-INSERT INTO tasks (id, title, status, priority, project_id, creator_id)
+INSERT INTO tasks (id, title, status, priority, project_id, assignee_id)
 VALUES
 (
   '00000000-0000-0000-0000-000000000201',

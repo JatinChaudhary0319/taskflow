@@ -5,10 +5,10 @@ TaskTracker backend API built with Node.js (Express), PostgreSQL, `pg`, JWT auth
 ## Architecture Decisions
 
 - **Layering**: routes → controllers → services → repositories to keep HTTP, business rules, and persistence concerns separate.
-- **Authorization in services**: ownership/creator rules live in services so controllers stay thin and repositories stay data-only.
+- **Authorization in services**: project ownership and task assignee rules live in services so controllers stay thin and repositories stay data-only.
 - **Migrations**: schema changes are explicit and versioned using `node-pg-migrate` (no ORM auto-migration).
 - **Logging**: structured JSON logs via `pino` and `pino-http`.
-- **Tradeoffs**: kept validation minimal and explicit to stay dependency-light; added a `creator_id` column to `tasks` to enforce delete rules.
+- **Tradeoffs**: kept validation minimal and explicit to stay dependency-light.
 
 ## Running Locally
 

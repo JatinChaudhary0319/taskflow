@@ -67,7 +67,6 @@ class TasksController {
 
       const task = await this.tasksService.create({
         projectId,
-        creatorId: req.auth.userId,
         userId: req.auth.userId,
         title,
         description,

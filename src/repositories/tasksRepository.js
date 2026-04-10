@@ -6,7 +6,7 @@ class TasksRepository {
   async listByProjectAccessible({ projectId, userId, status, assigneeId, page, limit }) {
     const where = [
       "t.project_id = $1",
-      `(p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2)`,
+      `(p.owner_id = $2 or t.assignee_id = $2)`,
     ];
     const values = [projectId, userId];
     let i = 3;
@@ -33,7 +33,7 @@ class TasksRepository {
 
     const result = await this.pool.query(
       `
-      select t.id, t.title, t.description, t.status, t.priority, t.project_id, t.creator_id, t.assignee_id, t.due_date, t.created_at, t.updated_at
+      select t.id, t.title, t.description, t.status, t.priority, t.project_id, t.assignee_id, t.due_date, t.created_at, t.updated_at
       from tasks t
       join projects p on p.id = t.project_id
       where ${where.join(" and ")}
@@ -45,30 +45,30 @@ class TasksRepository {
     return result.rows;
   }
 
-  async create({ projectId, creatorId, title, description, status, priority, assigneeId, dueDate }) {
+  async create({ projectId, title, description, status, priority, assigneeId, dueDate }) {
     const result = await this.pool.query(
       `
-      insert into tasks (title, description, status, priority, project_id, creator_id, assignee_id, due_date)
-      values ($1, $2, $3, $4, $5, $6, $7, $8)
-      returning id, title, description, status, priority, project_id, creator_id, assignee_id, due_date, created_at, updated_at
+      insert into tasks (title, description, status, priority, project_id, assignee_id, due_date)
+      values ($1, $2, $3, $4, $5, $6, $7)
+      returning id, title, description, status, priority, project_id, assignee_id, due_date, created_at, updated_at
       `,
-      [title, description ?? null, status, priority, projectId, creatorId, assigneeId ?? null, dueDate ?? null],
+      [title, description ?? null, status, priority, projectId, assigneeId ?? null, dueDate ?? null],
     );
     return result.rows[0];
   }
 
   async getById(taskId) {
     const result = await this.pool.query(
-      "select id, title, description, status, priority, project_id, creator_id, assignee_id, due_date, created_at, updated_at from tasks where id = $1",
+      "select id, title, description, status, priority, project_id, assignee_id, due_date, created_at, updated_at from tasks where id = $1",
       [taskId],
     );
     return result.rows[0] || null;
   }
 
-  async getProjectOwnerAndTaskCreator(taskId) {
+  async getProjectOwnerAndTaskAssignee(taskId) {
     const result = await this.pool.query(
       `
-      select p.owner_id, t.creator_id
+      select p.owner_id, t.assignee_id
       from tasks t
       join projects p on p.id = t.project_id
       where t.id = $1
@@ -110,7 +110,7 @@ class TasksRepository {
 
     values.push(taskId);
     const result = await this.pool.query(
-      `update tasks set ${fields.join(", ")} where id = $${i++} returning id, title, description, status, priority, project_id, creator_id, assignee_id, due_date, created_at, updated_at`,
+      `update tasks set ${fields.join(", ")} where id = $${i++} returning id, title, description, status, priority, project_id, assignee_id, due_date, created_at, updated_at`,
       values,
     );
     return result.rows[0] || null;
@@ -125,9 +125,9 @@ class TasksRepository {
     const result = await this.pool.query(
       `
       select
-        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2) and t.status = 'todo') as todo,
-        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2) and t.status = 'in_progress') as in_progress,
-        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2) and t.status = 'done') as done
+        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2) and t.status = 'todo') as todo,
+        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2) and t.status = 'in_progress') as in_progress,
+        (select count(*) from tasks t join projects p on p.id = t.project_id where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2) and t.status = 'done') as done
       `,
       [projectId, userId],
     );
@@ -137,7 +137,7 @@ class TasksRepository {
       select t.assignee_id, count(*)::int as count
       from tasks t
       join projects p on p.id = t.project_id
-      where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2)
+      where t.project_id = $1 and (p.owner_id = $2 or t.assignee_id = $2)
       group by t.assignee_id
       order by count desc
       `,

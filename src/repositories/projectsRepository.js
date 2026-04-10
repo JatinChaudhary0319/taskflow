@@ -9,7 +9,7 @@ class ProjectsRepository {
       select distinct p.id, p.name, p.description, p.owner_id, p.created_at
       from projects p
       left join tasks t on t.project_id = p.id
-      where p.owner_id = $1 or t.assignee_id = $1 or t.creator_id = $1
+      where p.owner_id = $1 or t.assignee_id = $1
       order by p.created_at desc
       `,
       [userId],
@@ -33,7 +33,7 @@ class ProjectsRepository {
       where p.id = $1
         and (
           p.owner_id = $2
-          or exists (select 1 from tasks t where t.project_id = p.id and (t.assignee_id = $2 or t.creator_id = $2))
+          or exists (select 1 from tasks t where t.project_id = p.id and t.assignee_id = $2)
         )
       `,
       [projectId, userId],
