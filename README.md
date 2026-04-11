@@ -208,24 +208,4 @@ This repo leans **full-stack with a strong frontend surface** (typed SPA, routin
 
 ---
 
-## 10. Self-review (production / recruiter lens)
-
-If I were reviewing this as a **frontend-heavy full-stack** submission for a **consumer-scale** product team (high traffic, real-time lists, zero tolerance for flaky UX), I’d call out:
-
-**Strengths**
-
-- Clear **split** (`client/` vs `server/`), **typed** UI, **layered API**, and **real-time** behavior (SSE) show end-to-end ownership, not just CRUD.
-- **Consistent error shape** on the API and a single **`apiFetch`** entry point on the client are good habits for a growing codebase.
-- **Route-level error boundary** and **theme persistence** are small touches that read as production-minded.
-
-**What I’d tighten next**
-
-- **Observability on the client:** error reporting (e.g. Sentry) and a minimal **analytics** hook for critical flows (login success/failure, task create)—especially relevant for consumer apps where you debug from real traffic.
-- **Network UX:** global **offline / slow** detection, retry for safe reads, and **skeleton** states (called out above) so the UI never “blinks” to a blank spinner on refetch.
-- **Forms:** move validation to **schema + RHF** so server `fields` and client labels stay in sync and accessibility (announce errors) is easier to test.
-- **Testing pyramid:** a few **Playwright** flows plus **Vitest** for pure helpers (e.g. kanban column math) would back refactors with confidence.
-- **Security polish:** short-lived access tokens + **refresh** rotation, and documenting **CSP** / cookie strategy if moving SSE off query tokens.
-
----
-
 **UI component approach:** [shadcn/ui](https://ui.shadcn.com/)-style patterns (Radix + CVA + Tailwind), implemented directly in `client/src/components/ui/` for this repo.
