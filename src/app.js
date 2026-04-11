@@ -7,6 +7,7 @@ const pinoHttp = require("pino-http");
 const pool = require("./config/db");
 const logger = require("./config/logger");
 const env = require("./config/env");
+const response = require("./http/response");
 
 const errorHandler = require("./http/middleware/errorHandler");
 const notFound = require("./http/middleware/notFound");
@@ -21,12 +22,12 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(pinoHttp({ logger }));
 
-app.get("/health", async (_req, res) => {
+app.get("/health", async (req, res) => {
   try {
     await pool.query("select 1 as ok");
-    res.type("application/json").status(200).send({ ok: true });
-  } catch (_e) {
-    res.type("application/json").status(500).send({ error: "internal server error" });
+    response.success(res, { status: 200, data: { ok: true } });
+  } catch (err) {
+    response.serverError(res, { err, logger: req.log });
   }
 });
 

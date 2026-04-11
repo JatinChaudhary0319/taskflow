@@ -17,6 +17,14 @@ class Response {
     res.status(204).send();
   }
 
+  /** 500 with standard JSON body; use for unexpected failures (e.g. health DB check). */
+  serverError(res, { err, logger }) {
+    if (logger) logger.error({ err }, "request failed");
+    res.status(500);
+    res.type("application/json");
+    return res.send({ error: "internal server error" });
+  }
+
   fail(res, { err, logger }) {
     res.type("application/json");
     if (err instanceof ValidationError) {
@@ -36,9 +44,7 @@ class Response {
       return res.send({ error: "not found" });
     }
 
-    if (logger) logger.error({ err }, "request failed");
-    res.status(500);
-    return res.send({ error: "internal server error" });
+    return this.serverError(res, { err, logger });
   }
 }
 

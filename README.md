@@ -13,7 +13,7 @@ TaskTracker backend API built with Node.js (Express), PostgreSQL, `pg`, JWT auth
 ## Running Locally
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/JatinChaudhary0319/taskflow-server.git
 cd taskflow
 cp .env.example .env
 docker compose up --build
