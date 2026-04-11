@@ -3,6 +3,26 @@ class ProjectsRepository {
     this.pool = pool;
   }
 
+  /**
+   * Users who see this project on GET /projects (owner + task assignees + creators).
+   */
+  async listProjectStakeholderUserIds(projectId) {
+    const result = await this.pool.query(
+      `
+      select distinct x.uid::text as id from (
+        select owner_id as uid from projects where id = $1
+        union all
+        select assignee_id from tasks where project_id = $1 and assignee_id is not null
+        union all
+        select creator_id from tasks where project_id = $1 and creator_id is not null
+      ) x
+      where x.uid is not null
+      `,
+      [projectId],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
   async listAccessible(userId) {
     const result = await this.pool.query(
       `

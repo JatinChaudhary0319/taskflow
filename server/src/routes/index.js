@@ -11,6 +11,7 @@ const userRoutes = require("./userRoutes");
 const authMiddlewareFactory = require("../http/middleware/auth");
 const { validateRequest, parseProjectIdParam, parseSseTokenQuery } = require("../http/middleware/validateRequest");
 const { createTaskStreamHandler } = require("../http/taskStreamHandler");
+const { createWorkspaceStreamHandler } = require("../http/workspaceStreamHandler");
 
 const JWT_SECRET = env.required("JWT_SECRET");
 const JWT_EXPIRY = env.optionalInt("JWT_EXPIRY", 86400);
@@ -20,6 +21,7 @@ const tokens = new JwtTokens({ secret: JWT_SECRET, ttlSeconds: JWT_EXPIRY });
 const authMiddleware = authMiddlewareFactory({ tokens });
 
 const taskSseHandler = createTaskStreamHandler({ tokens, pool });
+const workspaceSseHandler = createWorkspaceStreamHandler({ tokens });
 
 function buildRoutes() {
   const router = express.Router();
@@ -32,6 +34,8 @@ function buildRoutes() {
     validateRequest({ params: parseProjectIdParam, query: parseSseTokenQuery }),
     taskSseHandler,
   );
+
+  router.get("/stream/workspace", validateRequest({ query: parseSseTokenQuery }), workspaceSseHandler);
 
   router.use(authMiddleware);
 

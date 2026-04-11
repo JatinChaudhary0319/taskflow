@@ -1,5 +1,6 @@
 const { ForbiddenError, NotFoundError, ValidationError } = require("../http/errors");
 const taskHub = require("../realtime/taskHub");
+const { notifyProjectWorkspace } = require("../realtime/workspaceNotify");
 
 class TasksService {
   constructor({ projectsRepository, tasksRepository }) {
@@ -37,6 +38,7 @@ class TasksService {
       dueDate: dueDate ?? null,
     });
     this.emit(projectId, { type: "task_created", task, actorUserId: userId });
+    await notifyProjectWorkspace(this.projectsRepository, projectId);
     return task;
   }
 
@@ -62,6 +64,10 @@ class TasksService {
     const updated = await this.tasksRepository.update(taskId, nextPatch);
     if (!updated) throw new NotFoundError();
     this.emit(existing.project_id, { type: "task_updated", task: updated, actorUserId: userId });
+    await notifyProjectWorkspace(this.projectsRepository, existing.project_id, [
+      existing.assignee_id,
+      existing.creator_id,
+    ]);
     return updated;
   }
 
@@ -76,6 +82,11 @@ class TasksService {
     const ok = await this.tasksRepository.delete(taskId);
     if (!ok) throw new NotFoundError();
     this.emit(projectId, { type: "task_deleted", taskId, actorUserId: userId });
+    await notifyProjectWorkspace(this.projectsRepository, projectId, [
+      meta.owner_id,
+      meta.assignee_id,
+      meta.creator_id,
+    ]);
     return true;
   }
 
@@ -97,6 +108,7 @@ class TasksService {
       throw e;
     }
     this.emit(projectId, { type: "tasks_reordered", actorUserId: userId });
+    await notifyProjectWorkspace(this.projectsRepository, projectId);
     return true;
   }
 }

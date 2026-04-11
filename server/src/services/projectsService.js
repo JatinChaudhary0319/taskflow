@@ -1,4 +1,6 @@
 const { ForbiddenError, NotFoundError, ValidationError } = require("../http/errors");
+const workspaceHub = require("../realtime/workspaceHub");
+const { notifyProjectWorkspace } = require("../realtime/workspaceNotify");
 
 class ProjectsService {
   constructor({ projectsRepository, tasksRepository }) {
@@ -14,7 +16,9 @@ class ProjectsService {
     const fields = {};
     if (!name) fields.name = "is required";
     if (Object.keys(fields).length) throw new ValidationError(fields);
-    return this.projectsRepository.create({ ownerId, name, description: description ?? null });
+    const project = await this.projectsRepository.create({ ownerId, name, description: description ?? null });
+    workspaceHub.broadcastMany([ownerId], { type: "workspace_changed", projectId: project.id });
+    return project;
   }
 
   async getDetails({ projectId, userId }) {
@@ -45,6 +49,7 @@ class ProjectsService {
       description,
     });
     if (!updated) throw new ForbiddenError();
+    await notifyProjectWorkspace(this.projectsRepository, projectId);
     return updated;
   }
 
@@ -52,8 +57,10 @@ class ProjectsService {
     const existing = await this.projectsRepository.getById(projectId);
     if (!existing) throw new NotFoundError();
     if (existing.owner_id !== userId) throw new ForbiddenError();
+    const stakeholderIds = await this.projectsRepository.listProjectStakeholderUserIds(projectId);
     const ok = await this.projectsRepository.deleteOwned({ projectId, ownerId: userId });
     if (!ok) throw new ForbiddenError();
+    workspaceHub.broadcastMany(stakeholderIds, { type: "project_deleted", projectId });
     return true;
   }
 }

@@ -77,17 +77,39 @@ export function useProjectDetailPage(
     }
   }, [projectId]);
 
+  /** Refetch project + stats without toggling `loading` (avoids full-page spinner / header flicker). */
+  const loadSilent = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const [detail, statsRes] = await Promise.all([
+        apiFetch<ProjectDetail>(`/projects/${projectId}`),
+        apiFetch<{ stats: ProjectStats }>(`/projects/${projectId}/stats`).catch(() => ({
+          stats: null as unknown as ProjectStats,
+        })),
+      ]);
+      setProject(detail);
+      if (statsRes.stats) setStats(statsRes.stats);
+    } catch {
+      /* keep existing UI */
+    }
+  }, [projectId]);
+
   const loadRef = useRef(load);
   useEffect(() => {
     loadRef.current = load;
   }, [load]);
+
+  const loadSilentRef = useRef(loadSilent);
+  useEffect(() => {
+    loadSilentRef.current = loadSilent;
+  }, [loadSilent]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const onTaskEvent = useCallback(() => {
-    void loadRef.current();
+    void loadSilentRef.current();
   }, []);
 
   const { live } = useProjectLiveEvents({
@@ -139,7 +161,7 @@ export function useProjectDetailPage(
               ),
             );
           }
-          await loadRef.current();
+          await loadSilentRef.current();
         });
       } catch (err) {
         toast.error(formatApiError(err));
@@ -175,6 +197,7 @@ export function useProjectDetailPage(
                 }
               : p,
           );
+          await loadSilentRef.current();
         });
       } catch (err) {
         setProject((p) =>
@@ -198,6 +221,7 @@ export function useProjectDetailPage(
         await run(async () => {
           await apiFetch(`/tasks/${task.id}`, { method: "DELETE" });
           setProject((p) => (p ? { ...p, tasks: p.tasks.filter((x) => x.id !== task.id) } : p));
+          await loadSilentRef.current();
         });
         toast.success("Task deleted");
       } catch (err) {
@@ -250,6 +274,14 @@ export function useProjectDetailPage(
     setTaskDialogOpen(true);
   }, []);
 
+  const openEditProjectDialog = useCallback(() => {
+    setEditProjectOpen(true);
+  }, []);
+
+  const openDeleteProjectDialog = useCallback(() => {
+    setDeleteProjectOpen(true);
+  }, []);
+
   const openEditTask = useCallback((t: Task) => {
     setEditingTask(t);
     setTaskDialogOpen(true);
@@ -264,6 +296,7 @@ export function useProjectDetailPage(
       }
       return { ...p, tasks: [t, ...p.tasks] };
     });
+    void loadSilentRef.current();
   }, []);
 
   return {
@@ -297,6 +330,8 @@ export function useProjectDetailPage(
     saveProject,
     confirmDeleteProject,
     openNewTask,
+    openEditProjectDialog,
+    openDeleteProjectDialog,
     openEditTask,
     onTaskSaved,
     userId: user?.id,

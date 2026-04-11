@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FolderKanban, Plus } from "lucide-react";
+import { FolderKanban, Plus, Radio } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { BreadcrumbsBar } from "@/components/layout/breadcrumbs-bar";
@@ -16,12 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatApiError } from "@/contexts/auth-context";
+import { formatApiError, useAuth } from "@/contexts/auth-context";
+import { useWorkspaceLiveEvents } from "@/hooks/use-workspace-live-events";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Spinner } from "@/utils/Spinner";
 import type { Project } from "@/types/taskflow";
 
 export function ProjectsPage() {
+  const { token } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,29 @@ export function ProjectsPage() {
       setLoading(false);
     }
   }, []);
+
+  const loadSilent = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ projects: Project[] }>("/projects");
+      setProjects(data.projects);
+    } catch {
+      /* keep existing list */
+    }
+  }, []);
+
+  const loadSilentRef = useRef(loadSilent);
+  useEffect(() => {
+    loadSilentRef.current = loadSilent;
+  }, [loadSilent]);
+
+  const onWorkspaceEvent = useCallback(() => {
+    void loadSilentRef.current();
+  }, []);
+
+  const { live } = useWorkspaceLiveEvents({
+    token: token ?? undefined,
+    onWorkspaceEvent,
+  });
 
   useEffect(() => {
     void load();
@@ -84,9 +109,17 @@ export function ProjectsPage() {
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+            {live ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <Radio className="h-3 w-3" aria-hidden />
+                Live
+              </span>
+            ) : null}
+          </div>
           <p className="text-sm text-muted-foreground">
-            Everything you own or are assigned to.
+            Everything you own or are assigned to. Updates when tasks change.
           </p>
         </div>
         <Button type="button" onClick={() => setCreateOpen(true)} className="gap-2 self-start sm:self-auto">

@@ -11,6 +11,14 @@ export function taskEventsStreamUrl(projectId: string, token: string): string {
   return b ? `${b}${path}` : path;
 }
 
+/** User-scoped SSE: refetch GET /projects when tasks/projects change (e.g. first-time assignee). */
+export function workspaceStreamUrl(token: string): string {
+  const q = new URLSearchParams({ token });
+  const path = `/stream/workspace?${q.toString()}`;
+  const b = base();
+  return b ? `${b}${path}` : path;
+}
+
 export type ApiErrorBody = {
   error?: string;
   fields?: Record<string, string>;

@@ -21,7 +21,7 @@ Taskflow is a full-stack task and project manager: users register and sign in wi
 - **UI state:** Auth and theme use **localStorage**; the API client attaches `Authorization: Bearer` from stored JWT. Protected routes redirect to `/login`.
 - **Optimistic updates:** Task **status** changes update the board immediately and roll back if the PATCH fails.
 - **Drag-and-drop:** Tasks persist **per-status order** via `sort_order` (migration `1775828000000`). On desktop, with filters cleared, the board uses **@dnd-kit** to reorder within a column or move between columns; changes are saved with `POST /projects/:id/tasks/reorder`.
-- **Real-time (SSE):** `GET /projects/:id/stream/tasks?token=<jwt>` pushes JSON events when tasks change (create/update/delete/reorder) or the project is deleted. The UI opens `EventSource` with the token in the query string because **`EventSource` cannot send `Authorization` headers** (acceptable for local dev; production would use cookies or a gateway). Fan-out is **in-memory per Node process** (no Redis) — fine for a single API replica; scale-out would need a shared pub/sub layer.
+- **Real-time (SSE):** `GET /projects/:id/stream/tasks?token=<jwt>` pushes JSON events when tasks change (create/update/delete/reorder) or the project is deleted. **`GET /stream/workspace?token=<jwt>`** is a **user-scoped** stream: the API notifies everyone connected as that user when any project they care about changes (tasks created/updated/deleted/reordered, project renamed/deleted). That way the **projects list** refetches when someone assigns you to a task for the first time. Same token-in-query constraint as project SSE. Fan-out is **in-memory per Node process** (no Redis).
 - **Docker web image:** Static build served by **nginx** on port **3000** inside the container; the browser calls the API at **`http://localhost:4000`** (host-mapped), set at **build time** via `VITE_API_URL`.
 - **User directory:** `GET /users` (authenticated) returns all users for assignee filters and the task dialog picker.
 
@@ -30,7 +30,7 @@ Taskflow is a full-stack task and project manager: users register and sign in wi
 Assume **Docker Desktop** (or Docker Engine + Compose) is installed.
 
 ```bash
-git clone https://github.com/your-name/taskflow-your-name.git
+git clone https://github.com/JatinChaudhary0319/taskflow-jatin-chaudhary.git
 cd taskflow-your-name
 cp .env.example .env
 # Edit .env if you want strong secrets; defaults are fine for local review.
@@ -100,7 +100,7 @@ npm install
 npm run dev
 ```
 
-Vite dev server listens on **3000** and **proxies** `/auth`, `/users`, `/projects`, `/tasks`, and `/health` to `http://localhost:4000` when `VITE_API_URL` is not set, so relative API calls work out of the box.
+Vite dev server listens on **3000** and **proxies** `/auth`, `/users`, `/projects`, `/tasks`, `/stream`, and `/health` to `http://localhost:4000` when `VITE_API_URL` is not set, so relative API calls and SSE work out of the box.
 
 ## 5. Running Migrations
 
@@ -147,6 +147,7 @@ All JSON responses use `Content-Type: application/json`.
 - `GET /projects/:id` → project + `tasks[]` (tasks ordered by status column + `sort_order`)
 - `PATCH /projects/:id` — owner only, `{ "name?", "description?" }`
 - `DELETE /projects/:id` — owner only → `204`
+- `GET /stream/workspace?token=<jwt>` — **SSE** (no `Authorization` header): notifies the **authenticated user** with `data:` JSON such as `{ "type": "workspace_changed", "projectId" }` or `{ "type": "project_deleted", "projectId" }` when their **GET /projects** list may have changed (task assign/create/delete, reorder, project update/delete). Use this on the home/projects page.
 - `GET /projects/:id/stream/tasks?token=<jwt>` — **SSE** (`text/event-stream`): comment heartbeats `:ping`, `data:` JSON payloads such as `{ "type": "task_created", "task", "actorUserId" }`, `{ "type": "task_updated", ... }`, `{ "type": "task_deleted", "taskId" }`, `{ "type": "tasks_reordered" }`, `{ "type": "project_deleted" }`. Requires access to the project.
 - `GET /projects/:id/tasks?status=&assignee=&page=&limit=` → `{ "tasks": [...] }` (pagination optional)
 - `POST /projects/:id/tasks/reorder` — body `{ "columns": { "todo": ["uuid", ...], "in_progress": [...], "done": [...] } }` (every task in the project appears exactly once) → `204`
