@@ -3,6 +3,7 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
+const { dbSslOption } = require("../src/config/db/sslOptions");
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -10,7 +11,7 @@ async function main() {
     console.error("DATABASE_URL is required");
     process.exit(1);
   }
-  const pool = new Pool({ connectionString: url });
+  const pool = new Pool({ connectionString: url, ssl: dbSslOption() });
   const sqlPath = path.join(__dirname, "..", "seeds", "seed.sql");
   const sql = fs.readFileSync(sqlPath, "utf8");
   await pool.query(sql);

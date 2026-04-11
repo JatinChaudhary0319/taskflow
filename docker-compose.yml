@@ -1,5 +1,9 @@
+# Default: API + web use DATABASE_URL from `.env` (e.g. Supabase). No local Postgres.
+# For bundled DB: `docker compose --profile local-db up` and set DATABASE_URL to postgres://…@postgres:5432/…
 services:
   postgres:
+    profiles:
+      - local-db
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-taskflow}
@@ -23,16 +27,18 @@ services:
       target: api
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://taskflow:taskflow@postgres:5432/taskflow}
+      DB_SSL: ${DB_SSL:-false}
       JWT_SECRET: ${JWT_SECRET:-local-dev-only-change-me-min-32-characters-long-secret}
       JWT_EXPIRY: ${JWT_EXPIRY:-86400}
       BCRYPT_COST: ${BCRYPT_COST:-12}
       PORT: ${API_PORT:-4000}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     ports:
-      - "${API_PORT:-4000}:4000"
+      - "${API_PORT:-4000}:${API_PORT:-4000}"
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
 
   web:
     build:

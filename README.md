@@ -7,7 +7,7 @@ Taskflow is a full-stack task and project manager: users register and sign in wi
 **Stack**
 
 - **API:** Express 5, `pg`, `bcryptjs` (cost ≥ 12, configurable), `jsonwebtoken`, `pino` + `pino-http`, graceful shutdown on `SIGTERM` / `SIGINT`
-- **DB:** PostgreSQL 16 (Docker) with versioned up/down migrations
+- **DB:** PostgreSQL (hosted **Supabase** or optional **Docker** Postgres via compose profile `local-db`) with versioned up/down migrations; **`DB_SSL=true`** enables TLS for managed providers
 - **UI:** Vite, React Router 7, **shadcn-style components** (Radix primitives + `class-variance-authority` + Tailwind CSS v4), **react-hot-toast**, theme (light / dark / system) persisted in **localStorage** (`taskflow-ui-theme`), auth session in **localStorage** (`taskflow_auth`) — no Redux
 - **Infra:** Root `docker-compose.yml`, **one multi-target `Dockerfile`** (`api` + `web` stages), API uses a **multi-stage** install (deps stage + runtime copy)
 
@@ -33,31 +33,55 @@ Assume **Docker Desktop** (or Docker Engine + Compose) is installed.
 git clone https://github.com/JatinChaudhary0319/taskflow-jatin-chaudhary.git
 cd taskflow-jatin-chaudhary
 cp .env.example .env
-# Edit .env if you want strong secrets; defaults are fine for local review.
+# Edit .env: set DATABASE_URL (see below), JWT_SECRET, and matching VITE_API_URL / API_PORT / WEB_PORT / CORS_ORIGIN.
 docker compose up --build
 ```
 
-- **App (UI):** [http://localhost:3000](http://localhost:3000)
-- **API:** [http://localhost:4000](http://localhost:4000)  
-- **Health:** `GET http://localhost:4000/health`
+- **App (UI):** port from `WEB_PORT` (default **3000**) — [http://localhost:3000](http://localhost:3000)
+- **API:** port from `API_PORT` (default **4000**) — [http://localhost:4000](http://localhost:4000)  
+- **Health:** `GET http://localhost:4000/health` (adjust host/port if you changed `API_PORT`)
 
-`docker compose up` starts PostgreSQL, runs **migrations**, runs the **idempotent seed**, then starts the API and serves the built React app.
+`docker compose up` starts **api** and **web** only. The API entrypoint waits until **`DATABASE_URL`** accepts connections, runs **migrations**, runs the **idempotent seed**, then serves the app. There is **no local Postgres container** unless you opt in (see next subsection).
 
-### Docker: `FATAL: role "taskflow" does not exist` (repeating in logs)
+### Using Supabase (or any remote Postgres)
 
-PostgreSQL only creates `POSTGRES_USER` on **first** startup of an empty data directory. If the Docker volume was created earlier with different settings (or the default `postgres` user only), later connections as `taskflow` fail forever until the data volume is reset.
+1. In Supabase: **Project Settings → Database**, copy the **URI** (direct connection on port **5432** is fine for this API container).
+2. In root **`.env`** set:
+   - `DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres`
+   - `DB_SSL=true`
+3. Run `docker compose up --build`. Migrations and seed apply to your Supabase project (use a dev project, not production data, unless you intend to).
+
+**Notes**
+
+- URL-encode special characters in the DB password inside `DATABASE_URL`.
+- Prefer Supabase’s **direct** connection (`db.*.supabase.co:5432`) for **migrations**; the **transaction pooler** (`:6543`) can break tools that rely on prepared statements or session features.
+
+### Optional: local Postgres in Docker
+
+If you prefer a database inside Compose instead of Supabase:
+
+1. In **`.env`**, set `DATABASE_URL=postgres://taskflow:taskflow@postgres:5432/taskflow` and `DB_SSL=false` (matching `POSTGRES_*` in `.env.example`).
+2. Start with **`docker compose --profile local-db up --build`** so the `postgres` service runs and the API can resolve hostname `postgres`.
+
+### Docker: `FATAL: role "postgres" does not exist` (only when using `--profile local-db`)
+
+This comes from the **bundled** Postgres container. The data volume was created with a **different** `POSTGRES_USER` than your current `.env` (often the volume still has **`taskflow`** from the defaults, while `.env` was changed to `postgres`). The official image only creates the user you set on **first** init; changing `POSTGRES_USER` later does not add roles.
+
+**Fix:** Align `POSTGRES_*` in `.env` with how the volume was first created (see `.env.example`), **or** wipe the volume: `docker compose --profile local-db down -v` then `docker compose --profile local-db up --build`.
+
+### Docker: `FATAL: role "taskflow" does not exist` (only with `--profile local-db`)
+
+Same root cause as above: the volume was first initialized with a **different** `POSTGRES_USER` than today’s `.env`.
 
 **Fix (pick one):**
 
-1. **Recommended after a compose change:** `docker compose down` then `docker compose up --build` (this repo uses a dedicated volume name so a fresh cluster is created when the volume name changes).
-2. **Nuclear option:** remove the old volume and start clean (deletes DB data on disk):
+1. Match `POSTGRES_*` and `DATABASE_URL` to whatever the volume was created with, **or**
+2. Reset the bundled DB volume (deletes local DB data):
 
    ```bash
-   docker compose down -v
-   docker compose up --build
+   docker compose --profile local-db down -v
+   docker compose --profile local-db up --build
    ```
-
-Ensure `.env` has matching credentials: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and the same user/password/db inside `DATABASE_URL`.
 
 ### Single Dockerfile
 

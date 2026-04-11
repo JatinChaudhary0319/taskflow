@@ -9,8 +9,8 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "migrate:create": "node-pg-migrate -m migrations create",
-    "migrate:up": "node -r dotenv/config node_modules/node-pg-migrate/bin/node-pg-migrate.js up -m migrations",
-    "migrate:down": "node -r dotenv/config node_modules/node-pg-migrate/bin/node-pg-migrate.js down -m migrations",
+    "migrate:up": "node -r dotenv/config scripts/migrate-cli.js up",
+    "migrate:down": "node -r dotenv/config scripts/migrate-cli.js down",
     "seed": "node -r dotenv/config scripts/seed.js",
     "test": "node --test ./test/http.test.js"
   },
