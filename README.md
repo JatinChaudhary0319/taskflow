@@ -31,7 +31,7 @@ Assume **Docker Desktop** (or Docker Engine + Compose) is installed.
 
 ```bash
 git clone https://github.com/JatinChaudhary0319/taskflow-jatin-chaudhary.git
-cd taskflow-your-name
+cd taskflow-jatin-chaudhary
 cp .env.example .env
 # Edit .env if you want strong secrets; defaults are fine for local review.
 docker compose up --build
