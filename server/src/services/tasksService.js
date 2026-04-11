@@ -100,10 +100,12 @@ class TasksService {
     const project = await this.projectsRepository.getAccessible(projectId, userId);
     if (!project) throw new NotFoundError();
     try {
-      await this.tasksRepository.reorderByColumns({ projectId, columns });
+      await this.tasksRepository.reorderByColumns({ projectId, userId, columns });
     } catch (e) {
       if (e.code === "REORDER_MISMATCH") {
-        throw new ValidationError({ columns: "must list every task in the project exactly once" });
+        throw new ValidationError({
+          columns: "must list every task you can see on this project exactly once",
+        });
       }
       throw e;
     }

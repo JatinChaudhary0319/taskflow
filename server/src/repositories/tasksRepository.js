@@ -98,23 +98,36 @@ class TasksRepository {
     return result.rows.map((r) => r.id);
   }
 
-  async reorderByColumns({ projectId, columns }) {
+  async reorderByColumns({ projectId, userId, columns }) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
 
-      const { rows } = await client.query("select id from tasks where project_id = $1", [projectId]);
-      const dbIds = new Set(rows.map((r) => r.id));
+      const { rows: accessRows } = await client.query(
+        `
+        select t.id
+        from tasks t
+        join projects p on p.id = t.project_id
+        where t.project_id = $1
+          and (p.owner_id = $2 or t.assignee_id = $2 or t.creator_id = $2)
+        `,
+        [projectId, userId],
+      );
+      const accessibleIds = new Set(accessRows.map((r) => r.id));
 
-      const allProvided = [...columns.todo, ...columns.in_progress, ...columns.done];
-      if (allProvided.length !== dbIds.size) {
+      const todo = columns.todo ?? [];
+      const inProgress = columns.in_progress ?? [];
+      const done = columns.done ?? [];
+      const allProvided = [...todo, ...inProgress, ...done];
+
+      if (allProvided.length !== accessibleIds.size) {
         const err = new Error("column mismatch");
         err.code = "REORDER_MISMATCH";
         throw err;
       }
       const seen = new Set();
       for (const id of allProvided) {
-        if (!dbIds.has(id) || seen.has(id)) {
+        if (!accessibleIds.has(id) || seen.has(id)) {
           const err = new Error("invalid task id");
           err.code = "REORDER_MISMATCH";
           throw err;
@@ -122,14 +135,33 @@ class TasksRepository {
         seen.add(id);
       }
 
+      const ids = [];
+      const statuses = [];
+      const sortOrders = [];
       for (const status of ["todo", "in_progress", "done"]) {
-        const ids = columns[status];
-        for (let i = 0; i < ids.length; i++) {
-          await client.query(
-            `update tasks set status = $1, sort_order = $2 where id = $3 and project_id = $4`,
-            [status, i, ids[i], projectId],
-          );
+        const col = columns[status] ?? [];
+        for (let i = 0; i < col.length; i++) {
+          ids.push(col[i]);
+          statuses.push(status);
+          sortOrders.push(i);
         }
+      }
+
+      if (ids.length > 0) {
+        await client.query(
+          `
+          update tasks t
+          set
+            status = x.status::task_status,
+            sort_order = x.sort_order
+          from (
+            select *
+            from unnest($1::uuid[], $2::text[], $3::int[]) as x(id, status, sort_order)
+          ) x
+          where t.id = x.id and t.project_id = $4
+          `,
+          [ids, statuses, sortOrders, projectId],
+        );
       }
 
       await client.query("COMMIT");
