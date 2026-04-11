@@ -20,7 +20,7 @@ Taskflow is a full-stack task and project manager: users register and sign in wi
 - **Project access** includes owner, assignee on any task, or creator on any task, so collaborators who only create tasks still see the project.
 - **UI state:** Auth and theme use **localStorage**; the API client attaches `Authorization: Bearer` from stored JWT. Protected routes redirect to `/login`.
 - **Optimistic updates:** Task **status** changes update the board immediately and roll back if the PATCH fails.
-- **Drag-and-drop:** Tasks persist **per-status order** via `sort_order` (migration `1775828000000`). On desktop, with filters cleared, the board uses **@dnd-kit** to reorder within a column or move between columns; changes are saved with `POST /projects/:id/tasks/reorder`.
+- **Drag-and-drop:** Tasks persist **per-status order** via `sort_order` (migration `1775828000000`). On desktop, with filters cleared, the board uses **HTML5 drag-and-drop** (`Html5Kanban`) to reorder within a column or move between columns; changes are saved with `POST /projects/:id/tasks/reorder`.
 - **Real-time (SSE):** `GET /projects/:id/stream/tasks?token=<jwt>` pushes JSON events when tasks change (create/update/delete/reorder) or the project is deleted. **`GET /stream/workspace?token=<jwt>`** is a **user-scoped** stream: the API notifies everyone connected as that user when any project they care about changes (tasks created/updated/deleted/reordered, project renamed/deleted). That way the **projects list** refetches when someone assigns you to a task for the first time. Same token-in-query constraint as project SSE. Fan-out is **in-memory per Node process** (no Redis).
 - **Docker web image:** Static build served by **nginx** on port **3000** inside the container; the browser calls the API at **`http://localhost:4000`** (host-mapped), set at **build time** via `VITE_API_URL`.
 - **User directory:** `GET /users` (authenticated) returns all users for assignee filters and the task dialog picker.
@@ -150,7 +150,7 @@ All JSON responses use `Content-Type: application/json`.
 - `GET /stream/workspace?token=<jwt>` — **SSE** (no `Authorization` header): notifies the **authenticated user** with `data:` JSON such as `{ "type": "workspace_changed", "projectId" }` or `{ "type": "project_deleted", "projectId" }` when their **GET /projects** list may have changed (task assign/create/delete, reorder, project update/delete). Use this on the home/projects page.
 - `GET /projects/:id/stream/tasks?token=<jwt>` — **SSE** (`text/event-stream`): comment heartbeats `:ping`, `data:` JSON payloads such as `{ "type": "task_created", "task", "actorUserId" }`, `{ "type": "task_updated", ... }`, `{ "type": "task_deleted", "taskId" }`, `{ "type": "tasks_reordered" }`, `{ "type": "project_deleted" }`. Requires access to the project.
 - `GET /projects/:id/tasks?status=&assignee=&page=&limit=` → `{ "tasks": [...] }` (pagination optional)
-- `POST /projects/:id/tasks/reorder` — body `{ "columns": { "todo": ["uuid", ...], "in_progress": [...], "done": [...] } }` (every task in the project appears exactly once) → `204`
+- `POST /projects/:id/tasks/reorder` — body `{ "columns": { "todo": ["uuid", ...], "in_progress": [...], "done": [...] } }` (every task **the caller can see** on the project—owner, assignee, or creator—appears exactly once) → `204`
 - `POST /projects/:id/tasks` — create task
 - `GET /projects/:id/stats` — task counts by status and assignee (bonus)
 
@@ -178,14 +178,53 @@ npm test
 
 Three HTTP-level checks (validation / auth) that do not require a running database.
 
-## 9. What You’d Do With More Time
+## 9. What I’d Do With More Time
+
+This repo leans **full-stack with a strong frontend surface** (typed SPA, routing, live updates, DnD). Given more time, these are the next upgrades—especially on the **client**:
+
+**Forms and validation**
+
+- **React Hook Form + Yup (or Zod)** for login/register, task, and project dialogs: shared schema objects, fewer ad-hoc `useState` validators, and clearer field-level errors aligned with the API’s `fields` map.
+
+**Client data layer**
+
+- **Redux Toolkit** (or **TanStack Query**) for a **centralized store**: normalized tasks by id, deduped project fetches, and predictable updates when SSE fires—today `Context` + `useState` in hooks is fine for the assignment scope but does not scale as features grow.
+
+**HTTP client**
+
+- **Axios with interceptors** for **one place** that attaches `Authorization`, normalizes JSON errors into a single `ApiError` type, handles **401 → logout/redirect**, optional request IDs, and retry/backoff for idempotent GETs—today `apiFetch` in `client/src/lib/api.ts` covers auth and 401 clearing on `fetch`, but interceptors would make cross-cutting behavior easier to extend (e.g. feature flags, tracing headers).
+
+**Loading UX**
+
+- **Skeleton loaders** (and layout placeholders) on **projects list** and **project detail** instead of a single centered spinner, so perceived performance and layout stability match what you’d expect in a consumer product.
+
+**Other (backend + product)**
 
 - Stronger **E2E and DB-backed integration tests** (register → create project → task flows, SSE, reorder).
-- **User listing** or search for assignees instead of UUID fragments in filters.
-- **SSE auth without query tokens** (BFF cookie session or `fetch()` + `ReadableStream` client).
+- **User search** for assignees instead of raw UUID fragments in filters.
 - **Horizontal scale:** Redis pub/sub (or similar) so SSE works across multiple API instances.
-- **Stricter production defaults:** fail compose if `JWT_SECRET` still equals the documented dev placeholder; add rate limiting and refresh tokens.
+- **Stricter production defaults:** fail compose if `JWT_SECRET` still equals the documented dev placeholder; rate limiting and refresh tokens.
 - **i18n** and richer **accessibility** audits on complex dialogs.
+
+---
+
+## 10. Self-review (production / recruiter lens)
+
+If I were reviewing this as a **frontend-heavy full-stack** submission for a **consumer-scale** product team (high traffic, real-time lists, zero tolerance for flaky UX), I’d call out:
+
+**Strengths**
+
+- Clear **split** (`client/` vs `server/`), **typed** UI, **layered API**, and **real-time** behavior (SSE) show end-to-end ownership, not just CRUD.
+- **Consistent error shape** on the API and a single **`apiFetch`** entry point on the client are good habits for a growing codebase.
+- **Route-level error boundary** and **theme persistence** are small touches that read as production-minded.
+
+**What I’d tighten next**
+
+- **Observability on the client:** error reporting (e.g. Sentry) and a minimal **analytics** hook for critical flows (login success/failure, task create)—especially relevant for consumer apps where you debug from real traffic.
+- **Network UX:** global **offline / slow** detection, retry for safe reads, and **skeleton** states (called out above) so the UI never “blinks” to a blank spinner on refetch.
+- **Forms:** move validation to **schema + RHF** so server `fields` and client labels stay in sync and accessibility (announce errors) is easier to test.
+- **Testing pyramid:** a few **Playwright** flows plus **Vitest** for pure helpers (e.g. kanban column math) would back refactors with confidence.
+- **Security polish:** short-lived access tokens + **refresh** rotation, and documenting **CSP** / cookie strategy if moving SSE off query tokens.
 
 ---
 
