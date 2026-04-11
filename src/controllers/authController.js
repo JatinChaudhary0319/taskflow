@@ -1,5 +1,4 @@
 const response = require("../http/response");
-const { asString, requiredField, failIf } = require("../http/validate");
 
 class AuthController {
   constructor({ authService }) {
@@ -8,11 +7,7 @@ class AuthController {
 
   register = async (req, res, next) => {
     try {
-      const fields = {};
-      const name = requiredField(fields, "name", req.body?.name, asString);
-      const email = requiredField(fields, "email", req.body?.email, asString);
-      const password = requiredField(fields, "password", req.body?.password, asString);
-      failIf(fields);
+      const { name, email, password } = req.validated.body;
       const out = await this.authService.register({ name, email, password });
       response.success(res, { status: 201, data: out });
     } catch (err) {
@@ -22,10 +17,7 @@ class AuthController {
 
   login = async (req, res, next) => {
     try {
-      const fields = {};
-      const email = requiredField(fields, "email", req.body?.email, asString);
-      const password = requiredField(fields, "password", req.body?.password, asString);
-      failIf(fields);
+      const { email, password } = req.validated.body;
       const out = await this.authService.login({ email, password });
       response.success(res, { status: 200, data: out });
     } catch (err) {
@@ -35,4 +27,3 @@ class AuthController {
 }
 
 module.exports = AuthController;
-

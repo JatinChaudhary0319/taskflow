@@ -1,5 +1,4 @@
 const response = require("../http/response");
-const { asString, optionalTextOrNull, requiredField, failIf, uuidLike } = require("../http/validate");
 
 class ProjectsController {
   constructor({ projectsService }) {
@@ -17,11 +16,7 @@ class ProjectsController {
 
   create = async (req, res, next) => {
     try {
-      const fields = {};
-      const name = requiredField(fields, "name", req.body?.name, asString);
-      failIf(fields);
-      const d = optionalTextOrNull(req.body?.description);
-      const description = d.kind === "skip" ? undefined : d.value === "" ? null : d.value;
+      const { name, description } = req.validated.body;
       const project = await this.projectsService.create({ ownerId: req.auth.userId, name, description });
       response.success(res, { status: 201, data: project });
     } catch (err) {
@@ -31,9 +26,7 @@ class ProjectsController {
 
   getDetails = async (req, res, next) => {
     try {
-      const fields = {};
-      const projectId = requiredField(fields, "id", req.params?.id, uuidLike);
-      failIf(fields);
+      const { id: projectId } = req.validated.params;
       const out = await this.projectsService.getDetails({ projectId, userId: req.auth.userId });
       response.success(res, { status: 200, data: out });
     } catch (err) {
@@ -43,12 +36,8 @@ class ProjectsController {
 
   update = async (req, res, next) => {
     try {
-      const fields = {};
-      const projectId = requiredField(fields, "id", req.params?.id, uuidLike);
-      failIf(fields);
-      const name = req.body?.name === undefined ? undefined : asString(req.body?.name);
-      const d = optionalTextOrNull(req.body?.description);
-      const description = d.kind === "skip" ? undefined : d.value === "" ? null : d.value;
+      const { id: projectId } = req.validated.params;
+      const { name, description } = req.validated.body;
       const project = await this.projectsService.update({
         projectId,
         userId: req.auth.userId,
@@ -63,9 +52,7 @@ class ProjectsController {
 
   delete = async (req, res, next) => {
     try {
-      const fields = {};
-      const projectId = requiredField(fields, "id", req.params?.id, uuidLike);
-      failIf(fields);
+      const { id: projectId } = req.validated.params;
       await this.projectsService.delete({ projectId, userId: req.auth.userId });
       response.noContent(res);
     } catch (err) {
@@ -75,4 +62,3 @@ class ProjectsController {
 }
 
 module.exports = ProjectsController;
-

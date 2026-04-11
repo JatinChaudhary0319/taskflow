@@ -7,6 +7,11 @@ const JwtTokens = require("../../auth/tokens");
 const AuthService = require("../../services/authService");
 const AuthController = require("../../controllers/authController");
 const UsersRepository = require("../../repositories/usersRepository");
+const {
+  validateRequest,
+  parseAuthRegisterBody,
+  parseAuthLoginBody,
+} = require("../../http/middleware/validateRequest");
 
 const JWT_SECRET = env.required("JWT_SECRET");
 const JWT_EXPIRY = env.required("JWT_EXPIRY");
@@ -29,7 +34,7 @@ const router = express.Router();
 
 const controller = authController();
 
-router.post("/register", controller.register);
-router.post("/login", controller.login);
+router.post("/register", validateRequest({ body: parseAuthRegisterBody }), controller.register);
+router.post("/login", validateRequest({ body: parseAuthLoginBody }), controller.login);
 
 module.exports = router;

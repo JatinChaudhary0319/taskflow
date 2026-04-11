@@ -10,6 +10,15 @@ const TasksService = require("../../services/tasksService");
 const TasksController = require("../../controllers/tasksController");
 const TasksRepository = require("../../repositories/tasksRepository");
 
+const {
+  validateRequest,
+  parseProjectCreateBody,
+  parseProjectUpdateBody,
+  parseProjectIdParam,
+  parseTaskListQuery,
+  parseTaskCreateBody,
+} = require("../../http/middleware/validateRequest");
+
 const projectsController = () => {
   const projectsRepository = new ProjectsRepository({ pool });
   const tasksRepository = new TasksRepository({ pool });
@@ -36,13 +45,25 @@ const controllerTask = tasksController();
 const router = express.Router();
 
 router.get("/", controller.list);
-router.post("/", controller.create);
-router.patch("/:id", controller.update);
-router.delete("/:id", controller.delete);
-router.get("/:id", controller.getDetails);
+router.post("/", validateRequest({ body: parseProjectCreateBody }), controller.create);
+router.patch(
+  "/:id",
+  validateRequest({ params: parseProjectIdParam, body: parseProjectUpdateBody }),
+  controller.update,
+);
+router.delete("/:id", validateRequest({ params: parseProjectIdParam }), controller.delete);
+router.get("/:id", validateRequest({ params: parseProjectIdParam }), controller.getDetails);
 
-router.get("/:id/tasks", controllerTask.listByProject);
-router.post("/:id/tasks", controllerTask.createForProject);
-router.get("/:id/stats", controllerTask.stats);
+router.get(
+  "/:id/tasks",
+  validateRequest({ params: parseProjectIdParam, query: parseTaskListQuery }),
+  controllerTask.listByProject,
+);
+router.post(
+  "/:id/tasks",
+  validateRequest({ params: parseProjectIdParam, body: parseTaskCreateBody }),
+  controllerTask.createForProject,
+);
+router.get("/:id/stats", validateRequest({ params: parseProjectIdParam }), controllerTask.stats);
 
 module.exports = router;
